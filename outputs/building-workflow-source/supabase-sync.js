@@ -1662,9 +1662,10 @@
     const updateAttachmentNote = () => {
       const note = document.querySelector('.meeting-attachments small');
       if (!note) return;
-      note.textContent = cloud.user
+      const message = cloud.user
         ? '每個檔案上限 20 MB；附件會加密傳輸至私人雲端空間，並保留本機離線快取。'
         : '每個檔案上限 20 MB；目前保存在此瀏覽器，登入雲端同步後會自動上傳至私人空間。';
+      if (note.textContent !== message) note.textContent = message;
     };
     cloud.updateAttachmentNote = updateAttachmentNote;
     new MutationObserver(updateAttachmentNote).observe(document.querySelector('#practiceContent'), { childList: true, subtree: true });

@@ -8,6 +8,7 @@
   const AUTH_STORAGE_KEY = 'building-workflow-supabase-auth-v1';
   const SYNC_DEBOUNCE_MS = 900;
   const CHANGE_POLL_MS = 1600;
+  const PROJECT_NAME_MAX_CHARS = 200;
 
   const cloud = {
     client: null,
@@ -276,7 +277,9 @@
   function showCloudError(error, prefix) {
     console.warn(prefix || 'Supabase sync error', error);
     cloud.conflictMessage = '';
-    const message = prefix ? prefix + '：' + (error?.message || String(error)) : (error?.message || String(error));
+    const isProjectNameConstraint = error?.code === '23514' && String(error?.message || '').includes('workflow_projects_name_length');
+    const detail = isProjectNameConstraint ? '專案名稱過長，系統將自動縮短後重試；專案內容不受影響。' : (error?.message || String(error));
+    const message = prefix ? prefix + '：' + detail : detail;
     cloud.errorMessage = message;
     setCloudStatus('error', message, cloud.user ? '重試' : '重新登入');
   }
@@ -421,7 +424,9 @@
   function createConflictBackup(registry, localProject) {
     const now = new Date();
     const id = createProjectId();
-    const name = localProject.name + '（同步衝突備份 ' + now.toLocaleString('zh-TW', { hour12: false }) + '）';
+    const suffix = '（同步衝突備份 ' + now.toLocaleString('zh-TW', { hour12: false }) + '）';
+    const sourceName = String(localProject.name || '未命名專案').replace(/（同步衝突備份 [^）]*）/g, '').trim() || '未命名專案';
+    const name = truncateProjectName(sourceName, PROJECT_NAME_MAX_CHARS - Array.from(suffix).length) + suffix;
     const data = clone(localProject.data || {});
     const backup = {
       id,
@@ -441,6 +446,29 @@
     };
     registry.projects.push(backup);
     return backup;
+  }
+
+  function truncateProjectName(value, maxChars = PROJECT_NAME_MAX_CHARS) {
+    const clean = String(value || '').trim() || '未命名專案';
+    return Array.from(clean).slice(0, Math.max(1, maxChars)).join('');
+  }
+
+  function normalizeLocalProjectNames() {
+    const registry = getProjectRegistry();
+    let changed = false;
+    registry.projects.forEach(project => {
+      const safeName = truncateProjectName(project.name);
+      if (safeName === project.name) return;
+      project.name = safeName;
+      const metadata = projectCloud(project);
+      metadata.metaDirty = true;
+      changed = true;
+    });
+    if (changed) {
+      saveRegistryQuietly(registry);
+      renderProjectManager('已自動縮短過長的專案名稱，資料內容不受影響。', true);
+    }
+    return changed;
   }
 
   function replaceWithRemote(localProject, remoteProject, remoteRows, userId) {
@@ -630,7 +658,7 @@
     const payload = {
       user_id: context.userId,
       project_id: project.id,
-      name: project.name,
+      name: truncateProjectName(project.name),
       schema_version: Number(config.schemaVersion) || 1,
       version: 1,
       device_id: cloud.deviceId,
@@ -652,7 +680,7 @@
     const expected = Number(metadata.projectVersion) || 0;
     if (!expected) return insertRemoteProject(project, context);
     const { data, error } = await cloud.client.from(config.projectTable)
-      .update({ name: project.name, version: expected + 1, device_id: cloud.deviceId })
+      .update({ name: truncateProjectName(project.name), version: expected + 1, device_id: cloud.deviceId })
       .eq('user_id', context.userId)
       .eq('project_id', project.id)
       .eq('version', expected)
@@ -801,6 +829,7 @@
       return;
     }
     const context = { userId: cloud.user.id, epoch: cloud.sessionEpoch };
+    normalizeLocalProjectNames();
     captureLiveProjectChanges();
     cloud.syncing = true;
     cloud.syncRequested = false;
@@ -1624,6 +1653,26 @@
         downloadMeetingAttachmentRecord(record);
       } catch (error) {
         alert('附件下載失敗，請確認網路連線後重試。');
+        console.warn(error);
+      }
+    };
+
+    previewMeetingAttachment = async function (attachmentId) {
+      const previewWindow = window.open('about:blank', '_blank');
+      if (previewWindow) previewWindow.opener = null;
+      try {
+        const context = cloud.user ? currentSyncContext() : null;
+        let record = await getLocalAttachmentRecord(attachmentId).catch(() => null);
+        if (!record?.blob) record = await fetchRemoteAttachmentById(attachmentId, context);
+        if (!record) return;
+        record = await ensureAttachmentBlob(record, context);
+        const url = URL.createObjectURL(record.blob);
+        if (previewWindow) previewWindow.location.href = url;
+        else alert('瀏覽器已阻擋新視窗，請允許此網站開啟分頁後再試一次。');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (error) {
+        if (previewWindow) previewWindow.close();
+        alert('檔案檢視失敗，請確認已登入且網路連線正常。');
         console.warn(error);
       }
     };

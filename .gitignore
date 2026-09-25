@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+.cache/
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+supabase/.env.keys
+supabase/.env.local
+supabase/.env.*.local
+
+# Temporary GitMind request payloads
+outputs/gitmind-*.payload.json

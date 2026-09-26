@@ -23,6 +23,18 @@
     });
   }
 
+  function classifyLifecycleIdentity(project) {
+    const id = project && (project.id || project.draftId || project.templateId) || '';
+    if (domain.classifyLegacyProject({ id }) === 'EXCLUDED_TEST_FIXTURE') return 'TEST';
+    if (/^template-/.test(id) || project?.status === 'TEMPLATE') return 'TEMPLATE';
+    if (/^draft-/.test(id) || ['DRAFT', 'PROMOTING', 'PROMOTION_FAILED', 'PROMOTED'].includes(project?.status)) {
+      return 'LEGACY_LOCAL';
+    }
+    if (domain.isUuid(id)) return 'FORMAL_CANONICAL';
+    if (/^project-/.test(id) || id === 'legacy-project') return 'LEGACY_LOCAL';
+    return 'TEST';
+  }
+
   function createCompatibilityReference(project, mapping) {
     const inspection = inspectLegacyProject(project);
     if (inspection.classification === 'EXCLUDED_TEST_FIXTURE') {
@@ -36,5 +48,5 @@
     return Object.freeze({ canonicalProjectId, legacyProjectId: inspection.legacyProjectId });
   }
 
-  return Object.freeze({ inspectLegacyProject, createCompatibilityReference });
+  return Object.freeze({ inspectLegacyProject, classifyLifecycleIdentity, createCompatibilityReference });
 });

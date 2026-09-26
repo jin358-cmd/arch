@@ -25,6 +25,7 @@ LegacyProjectIdentity {
 
 - Project Domain Service 產生 canonical UUID（server-side UUID v4 或同等具 122-bit 隨機性的標準 UUID）並唯一寫入 `Project.name`。
 - `id` 建立後不可變；`name` 必須 trim、非空、符合產品長度限制，但名稱不是識別鍵。
+- `name` 以 NFC 正規化、上限 200 characters，且允許不同 Project 使用相同 normalized name；不得建立全域唯一限制。
 - `(sourceSystem, legacyProjectId)` 唯一映射至一個 canonical Project；一個 canonical Project 可有多個 legacy mapping。
 - `ownerUserId` 必須對應有效 user，且同時存在唯一 OWNER membership；所有權轉移是受稽核的 owner-only operation。
 
@@ -32,9 +33,13 @@ LegacyProjectIdentity {
 
 Module 只接收 canonical `projectId`，先由 server resolver 驗證 UUID、Project 存在與 membership，再回傳最小 Project Context。legacy ID 僅可送入受控 migration resolver，不得出現在新 route 或新 foreign key。
 
-## Offline provisional identity
+## Draft and offline identity
 
-離線 client 可建立 UUID v4 並標記 `provisional`，同時記錄 device ID、creation nonce 與 creation time。同步時 server 以 idempotency key claim 該 UUID；若 UUID 已屬於不同 creation nonce，server 產生新 canonical UUID、建立 provisional alias，並原子更新待同步引用。provisional record 未確認前不得執行跨使用者分享或高影響 action。
+未登入 client 只能建立 `draft-{UUID}` Draft 或 `template-{UUID}` Template；這些 ID 不是 Formal Project UUID，不建立 owner membership、Production cloud row或正式 mapping。登入後由使用者明確觸發 idempotent promotion，才建立 canonical UUID。Draft identity 不被覆寫；完成後保存 `promotedProjectId`。
+
+## Project display identity
+
+顯示契約由 `Project Name` 加上可選的 display code、location/address、client/owner display name、year、status 組成。這些欄位僅供辨識，均不得成為 route、authorization 或關聯 identity。Display Code 產生格式、Address 是否必填與最終卡片版面屬 **FUTURE UI DECISION**。
 
 ## Collision prevention and validation
 

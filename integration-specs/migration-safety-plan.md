@@ -2,6 +2,8 @@
 
 本文件只定義計畫，不授權執行 migration、remote write、搬移資料或部署。
 
+未來 canonical migration 必須為 additive、UUID-first、membership-aware、non-destructive、legacy-compatible，且不得建立 Project Name 全域唯一 constraint。Migration file 在正式 Supabase CLI 環境就緒前維持 **NOT CREATED**；不得手工偽造 timestamp filename。
+
 ## Universal stage gate
 
 每一 stage 均須先滿足：前一 stage 已簽核、可還原 snapshot 已實測、schema/policy 版本固定、操作者與維護窗確認。唯讀驗證必須從 legacy 與 candidate 兩側獨立查詢，產出總 row count、按 project/entity 分組 count、stable-order canonical checksum、broken foreign reference/object orphan 清單。rollback condition 或 stop condition 一旦成立，停止 writer/cutover、保留證據、按既定 route/read toggle 回前版；禁止以 silent overwrite、刪除異常列或跨 store last-write-wins「修復」。

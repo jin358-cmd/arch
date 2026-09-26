@@ -4,6 +4,8 @@
 
 `Project` 是授權範圍；`ProjectMembership(projectId, userId, role, status, createdAt, updatedAt)` 是 server/database 的權威關係。每個 Project 必須恰有一個 OWNER。角色不得由 URL、request body、client storage 或 user-editable metadata 決定。
 
+`Project.ownerUserId` 與唯一 OWNER membership 必須同時存在且 user ID 一致；不一致是 integrity violation。建立或 promotion Formal Project 時兩者須在同一 transaction 完成，Draft/Template 不建立 membership。
+
 ## Permission matrix
 
 | Permission | OWNER | MANAGER | EDITOR | VIEWER |

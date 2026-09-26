@@ -5,6 +5,8 @@
 | Domain | Canonical Store | Canonical Writer | Read Model | Legacy Source | Migration Strategy |
 |---|---|---|---|---|---|
 | Project | Normalized | Project Domain Service | Project Context | `workflow_projects`, Atlas project | UUID mapping、shadow read、cutover |
+| DraftProject | Local draft store | Draft Lifecycle Service | Draft editor | legacy local registry | explicit authenticated promotion |
+| Template | Local/template catalog | Template Service | Template browser | confirmed test/template data | clone to new Draft; never migrate ID |
 | Membership | Normalized | Membership Service | Project Context/ACL | owner `user_id`, Atlas membership | owner backfill、policy shadow test |
 | Phase | Normalized identity | Project Structure Service | Construction tree | Workflow JSON/Atlas phase | preserve legacy key, map UUID |
 | Section | Normalized identity | Project Structure Service | Construction tree | Workflow JSON/Atlas section | parent-aware mapping |
@@ -29,4 +31,5 @@
 - 禁止 dual master、silent overwrite，以及 canonical stores 之間的 last-write-wins。
 - 切換必須使用版本、idempotency key、expected-version/compare-and-swap 與 audit event；衝突進 quarantine，不自動覆蓋。
 - normalized identity 可被 JSON 引用，JSON 不得重新定義 canonical Project/Phase/Section identity。
+- Draft/Template 不是 Project canonical store；promotion 只能由 Project Domain Service 建立 Formal Project，並以 promotion key 保證 idempotency。
 - 若實作盤點顯示 domain 無法依本表唯一歸屬，停止並標記 **DECISION REQUIRED**。

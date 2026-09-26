@@ -79,3 +79,35 @@
 **Rollback considerations:** staging 期間維持舊 owner-only write；membership policy 未驗證前不得放寬權限。
 
 **Future migration path:** owner backfill → shadow authorization → policy tests → staged role enablement → future engineering-role mapping。
+
+## ADR-006 — Duplicate Project Names Allowed
+
+**Status:** APPROVED
+
+**Context:** 不同工程案可能合法使用相同名稱；名稱也可能隨業務需求變更。
+
+**Decision:** normalized Project Name 可重複。不得建立 `UNIQUE(project_name)` 或等價的全域名稱唯一限制；名稱不是 primary key、route identity 或 authorization identity。唯一正式 identity 是 canonical Project UUID。
+
+**Reason:** 防止顯示名稱承擔識別責任，並容納真實世界同名工程案。
+
+**Consequences:** selector、搜尋結果與 Project card 必須提供可選的 display code、location、address、client/owner display name、year 或 status 作為辨識資訊，但仍以 UUID 執行操作。
+
+**Rollback considerations:** 若未來需要組織範圍的名稱政策，應新增 scope-aware validation，不得重用名稱作 identity 或合併既有 Project。
+
+**Future migration path:** migration 只加非唯一 name lookup index；UI disambiguation 逐步接入，不修改 canonical UUID。
+
+## ADR-007 — Unauthenticated Draft / Template Only
+
+**Status:** APPROVED
+
+**Context:** 未登入時無法建立可由 server/RLS 驗證的 owner 與唯一 OWNER membership。
+
+**Decision:** 未登入只能建立 Draft 或 Template。Formal Project 必須由 authenticated user 明確 promotion/create，並在同一 transaction 建立 canonical UUID、owner 與唯一 OWNER membership。
+
+**Reason:** 將離線創作與 Production authorization boundary 分離，避免未擁有 owner 的正式資料。
+
+**Consequences:** Draft/Template 使用明確 namespace，不建立 Production row、不觸發正式 sync；promotion 必須 idempotent、可重試且完成驗證後才標記 PROMOTED。
+
+**Rollback considerations:** promotion 未完成時 Draft 保持可恢復；不覆寫 Draft identity，Formal 建立失敗可清理不完整 transaction 並以相同 promotion key 重試。
+
+**Future migration path:** local Draft store → authenticated promotion command → atomic formal creation/import → integrity validation → Draft PROMOTED reference。

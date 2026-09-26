@@ -6,6 +6,7 @@
   'use strict';
 
   const PROJECT_NAME_MAX_LENGTH = 200;
+  const FORMAL_PROJECT_STATUSES = Object.freeze(['ACTIVE', 'ARCHIVED']);
   const PROJECT_ROLES = Object.freeze(['OWNER', 'MANAGER', 'EDITOR', 'VIEWER']);
   const PROJECT_PERMISSIONS = Object.freeze([
     'VIEW_PROJECT',
@@ -98,6 +99,19 @@
     return { valid: true, normalizedName: name.normalized, error: null };
   }
 
+  function validateOwnerConsistency(project, memberships) {
+    if (!validateCanonicalProject(project).valid || !Array.isArray(memberships)) {
+      return { valid: false, error: 'INVALID_OWNER_CONTEXT' };
+    }
+    const projectMemberships = memberships.filter(item => item && item.projectId === project.id);
+    const owners = projectMemberships.filter(item => item.role === 'OWNER');
+    if (owners.length !== 1) return { valid: false, error: 'EXACTLY_ONE_OWNER_MEMBERSHIP_REQUIRED' };
+    if (owners[0].userId !== project.ownerUserId) {
+      return { valid: false, error: 'OWNER_MEMBERSHIP_MISMATCH' };
+    }
+    return { valid: true, error: null };
+  }
+
   function validateLegacyProjectIdentity(identity) {
     const valid = Boolean(
       identity &&
@@ -133,6 +147,7 @@
 
   return Object.freeze({
     PROJECT_NAME_MAX_LENGTH,
+    FORMAL_PROJECT_STATUSES,
     PROJECT_ROLES,
     PROJECT_PERMISSIONS,
     ROLE_PERMISSIONS,
@@ -144,6 +159,7 @@
     hasProjectPermission,
     canManageMembership,
     validateCanonicalProject,
+    validateOwnerConsistency,
     validateLegacyProjectIdentity,
     preserveCanonicalIdentity,
     canonicalProjectRoute,

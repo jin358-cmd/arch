@@ -16,6 +16,7 @@
 - [Canonical Identity](canonical-identity.md)
 - [Domain Ownership](domain-ownership.md)
 - [Project Membership](project-membership.md)
+- [Project Lifecycle](project-lifecycle.md)
 - [Routing Contract](routing-contract.md)
 - [Document and Attachment Model](document-attachment-model.md)
 - [AI Review Contract](ai-review-contract.md)
